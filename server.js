@@ -53,11 +53,11 @@ io.on('connection', (socket) => {
         }
         return game[choice1].includes(choice2) ? states.win : states.loss;
     }
-
+    // Set the player move
     const makeMove = (choices, player, choice) => {
         choices[player - 1] = choice;
     }
-
+    // Get the room Details
     const getRoomDetails = (roomId) => {
         const room = rooms[roomId];
         return {
