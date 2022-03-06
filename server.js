@@ -24,6 +24,7 @@ const states = {
     win: 'win',
     loss: 'loss',
 }
+const randomChoices = ['rock', 'paper', 'scissors'];
 const users = {};
 const rooms = {};
 // Player vs Enviroment (Computer)
@@ -36,16 +37,15 @@ const game = {
 };
 
 io.on('connection', (socket) => {
-    console.log('New client connected');
+    console.log(`New client connected ${socket.id}`);
     users[socket.id] = {
         score: 0,
         name: '',
     }
     // Genetate Random Choice for Player vs Environment 
     const generateRandomChoice = () => {
-        const choices = ['rock', 'paper', 'scissors'];
         const randomIndex = Math.floor(Math.random() * 3);
-        return choices[randomIndex];
+        return randomChoices[randomIndex];
     }
     // Calculate the winner
     const calculateWinner = (choice1, choice2) => {
@@ -58,10 +58,23 @@ io.on('connection', (socket) => {
     const makeMove = (choices, player, choice) => {
         choices[player - 1] = choice;
     }
+
+    const getRoomDetails = (roomId) => {
+        const room = rooms[roomId];
+        return {
+            room,
+            players: room?.players,
+            choices: room?.choices,
+            scores: room?.scores,
+        }
+    }
+    // Set the player name
+    socket.on("setName", (name) => {
+        users[socket.id].name = name;
+    })
     // Create a new room
     socket.on("createRoom", () => {
         const roomId = uuidv4();
-
         const playerId = socket.id;
         // Create a new room and add the player to it
         rooms[roomId] = {
@@ -76,25 +89,16 @@ io.on('connection', (socket) => {
     })
     // Join a room
     socket.on("joinRoom", (roomId) => {
-        if (!roomId && !rooms[roomId])
+        if (!roomId || !rooms[roomId])
             return socket.emit("error", "Room does not exist");
-        const room = rooms[roomId];
-        const players = room.players;
+
+        const { players } = getRoomDetails(roomId);
         const player2Id = socket.id;
         players[1] = player2Id;
         // Send the room id to the player
         socket.join(roomId);
         socket.emit("playerTwoJoined", roomId);
         socket.emit("roomJoined", roomId);
-    })
-    // Set the player name
-    socket.on("setName", (name) => {
-        users[socket.id].name = name;
-    })
-    // Disconnect
-    socket.on('disconnect', () => {
-        console.log("disconnected", socket?.id);
-        delete users[socket.id];
     })
     // Make a move and send the result to the player
     socket.on('make-move', (data) => {
@@ -106,21 +110,20 @@ io.on('connection', (socket) => {
         // Room does not exist
         if (!roomId || !rooms[roomId])
             return socket.emit("error", "Room does not exist");
-        const room = rooms[roomId];
-        const players = room.players;
+        const {
+            room,
+            choices,
+            scores,
+            players
+        } = getRoomDetails(roomId);
         // Get the player's id from the players array in the room
         if (!players.includes(socket.id)) {
             return socket.emit("error", "You are not in the room");
         }
-
         const player1Id = players[0];
         const player2Id = players[1];
         const player = socket.id === player1Id ? 1 : 2;
-        // Get the player's choice from the choices array in the room
-        const choices = room.choices;
-        const scores = room.scores;
         // Player already made a move
-
         if (choices[player - 1])
             return socket.emit("error", "You already made a move");
         // Make the move
@@ -181,4 +184,9 @@ io.on('connection', (socket) => {
             computerChoice: choice2,
         });
     });
+    // Disconnect
+    socket.on('disconnect', () => {
+        console.log("disconnected", socket?.id);
+        delete users[socket.id];
+    })
 });
