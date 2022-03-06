@@ -37,9 +37,8 @@ const game = {
 };
 
 io.on('connection', (socket) => {
-    console.log(`New client connected ${socket.id}`);
+    console.log(`Client connected ${socket.id}`);
     users[socket.id] = {
-        score: 0,
         name: '',
     }
     // Genetate Random Choice for Player vs Environment 
@@ -186,7 +185,7 @@ io.on('connection', (socket) => {
     });
     // Disconnect
     socket.on('disconnect', () => {
-        console.log("disconnected", socket?.id);
+        console.log(`Client disconnected ${socket.id}`);
         delete users[socket.id];
     })
 });
