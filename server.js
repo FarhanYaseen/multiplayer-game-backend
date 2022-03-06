@@ -26,6 +26,8 @@ const states = {
 }
 const users = {};
 const rooms = {};
+// Player vs Enviroment (Computer)
+const pve = {};
 
 const game = {
     "rock": ["scissors"],
@@ -58,8 +60,7 @@ io.on('connection', (socket) => {
     }
     // Create a new room
     socket.on("createRoom", () => {
-        // const roomId = uuidv4();
-        const roomId = "uuidv4";
+        const roomId = uuidv4();
 
         const playerId = socket.id;
         // Create a new room and add the player to it
@@ -132,14 +133,16 @@ io.on('connection', (socket) => {
                 scores[0]++;
                 socket.to(roomId).emit("gameOver", {
                     winnerId: player1Id,
-                    score: scores[0]
+                    score: scores[0],
+                    enemyChoice: choices[1],
                 })
             }
             else if (winner === states.loss) {
                 scores[1]++;
                 socket.to(roomId).emit("gameOver", {
                     winnerId: player2Id,
-                    score: scores[1]
+                    score: scores[1],
+                    enemyChoice: choices[0],
                 })
             }
             else {
@@ -153,14 +156,29 @@ io.on('connection', (socket) => {
 
     })
     // Play with Computer
-    socket.on('pve', (choice) => {
+    socket.on('pve', () => {
+        const playerId = socket.id;
+        pve[playerId] = {
+            score: 0,
+        }
+
+    })
+    // Play with Computer and send the result to the player 
+    socket.on('pveMove', (choice) => {
+        const playerId = socket.id;
+        if (!pve[playerId]) {
+            return socket.emit("error", "You have not selected to play with computer");
+        }
         const choice1 = choice.toLowerCase();
         const choice2 = generateRandomChoice();
         const winner = calculateWinner(choice1, choice2);
-        users[socket.id].score += winner === states.win ? 1 : 0;
+
+        pve[playerId].score += winner === states.win ? 1 : 0;
         socket.emit("pveResult", {
             status: states[winner],
-            user: users[socket.id],
+            score: pve[playerId].score,
+            choice: choice1,
+            computerChoice: choice2,
         });
-    })
+    });
 });
